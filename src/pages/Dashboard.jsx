@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import api from "../configs/api";
 import toast from "react-hot-toast";
-import pdfToText from "react-pdfToText";
 
 const Dashboard = () => {
   const { user, token } = useSelector((state) => state.auth);
@@ -55,17 +54,24 @@ const Dashboard = () => {
     }
   };
 
-  // Upload Resume
+  // ✅ Fixed Upload Resume (no pdfToText needed)
   const uploadResume = async (event) => {
     event.preventDefault();
     setIsLoading(true);
     try {
-      const resumeText = await pdfToText(file);
-      const { data } = await api.post(
-        "/api/ai/upload-resume",
-        { title, resumeText },
-        { headers: { Authorization: token } }
-      );
+      if (!file) throw new Error("Please select a PDF file");
+
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("file", file);
+
+      const { data } = await api.post("/api/ai/upload-resume", formData, {
+        headers: {
+          Authorization: token,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       setTitle("");
       setFile(null);
       setShowUploadResume(false);
@@ -88,14 +94,14 @@ const Dashboard = () => {
     event.preventDefault();
     try {
       const { data } = await api.put(
-        '/api/resumes/update',
+        "/api/resumes/update",
         {
-          resumeId: editResume,       // the resume _id
-          resumeData: { title },      // data you’re updating
-          removeBG: false             // optional flag
+          resumeId: editResume,
+          resumeData: { title },
+          removeBG: false,
         },
         {
-          headers: { Authorization: token }
+          headers: { Authorization: token },
         }
       );
 
@@ -278,7 +284,22 @@ const Dashboard = () => {
               disabled={isLoading}
               className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center justify-center gap-2"
             >
-              {isLoading && <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="animate-spin size-4 text-white"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
+              {isLoading && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="animate-spin size-4 text-white"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              )}
               {isLoading ? "Uploading..." : "Upload Resume"}
             </button>
           </div>
